@@ -11,15 +11,15 @@
 </template>
 
 <script>
-import { pipe, map, switchMap, take, delay } from "rxjs/operators";
+import { pipe, map, switchMap, take, delay, catchError } from "rxjs/operators";
 import { useSoulsGames } from "../api/speedsouls";
+import { Observable, Subject, of } from "rxjs";
 
 export default {
   name: "Home",
   data: () => ({
     data: undefined,
     error: null,
-    source: null
   }),
   methods: {
     onSuccess(data) {
@@ -31,10 +31,7 @@ export default {
     }
   },
   mounted() {
-    this.source = useSoulsGames().subscribe(this.onSuccess, this.onError);
-  },
-  unmounted() {
-    this.source.unsubscribe();
+    this.$subscribeTo(useSoulsGames(), this.onSuccess, this.onError);
   }
 };
 </script>

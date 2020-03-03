@@ -1,5 +1,5 @@
 import { ajax } from "rxjs/ajax";
-import { map, startWith, flatMap, find, delay } from "rxjs/operators";
+import { map, startWith, flatMap, find } from "rxjs/operators";
 import CACHE from './cache'
 
 const API_ENDPOINT = "https://www.speedrun.com/api/v1";
@@ -46,8 +46,7 @@ export function useSoulsCategory(gameid, categoryid) {
       }
 
       return category;
-    })
-  )
+    }))
 }
 
 export function useLeaderboard(gameid, categoryid) {

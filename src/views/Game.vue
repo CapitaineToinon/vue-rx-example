@@ -21,7 +21,7 @@
 </template>
 
 <script>
-import { pipe, map, switchMap, take, delay } from "rxjs/operators";
+import { pipe, map, switchMap, take, delay, pluck } from "rxjs/operators";
 import { useSoulsGame, useSoulsCategory } from "../api/speedsouls";
 import Leaderboard from "../components/Leaderboard";
 
@@ -31,49 +31,12 @@ export default {
   data: () => ({
     game: undefined,
     gameError: null,
-    gameSource: null,
     category: undefined,
     categoryError: null,
-    categorySource: null
   }),
-  watch: {
-    ["$route.params.game"]: {
-      immediate: true,
-      handler(val, oldVal) {
-        if (val === oldVal) return;
-
-        const { game } = this.$route.params;
-        this.gameSub(game);
-      }
-    },
-    ["$route.params.category"]: {
-      immediate: true,
-      handler(val, oldVal) {
-        if (val === oldVal) return;
-
-        const { game, category } = this.$route.params;
-        if (category) {
-          this.categorySub(
-            this.$route.params.game,
-            this.$route.params.category
-          );
-        }
-      }
-    }
-  },
   methods: {
-    gameSub(game) {
-      this.gameUnsub();
-      this.gameSource = useSoulsGame(game).subscribe(
-        this.onGameSuccess,
-        this.onGameError
-      );
-    },
-    gameUnsub() {
-      if (this.gameSource) this.gameSource.source.unsubscribe();
-    },
     onGameSuccess(data) {
-      this.error = null;
+      this.gameError = null;
 
       if (!this.$route.params.category && data.categories.data.length) {
         this.$router.replace({
@@ -90,16 +53,6 @@ export default {
     onGameError(error) {
       this.gameError = error;
     },
-    categorySub(game, category) {
-      this.categoryUnsub();
-      this.categorySource = useSoulsCategory(game, category).subscribe(
-        this.onCategorySuccess,
-        this.onCategoryError,
-      );
-    },
-    categoryUnsub() {
-      if (this.categorySource) this.categorySource.unsubscribe();
-    },
     onCategorySuccess(category) {
       this.categoryError = null;
       this.category = category;
@@ -108,10 +61,24 @@ export default {
       this.categoryError = error;
     }
   },
-  mounted() {},
-  unmounted() {
-    this.gameUnsub();
-    this.categoryUnsub();
-  }
+  mounted() {
+    this.$subscribeTo(
+      this.$watchAsObservable("$route.params.game", { immediate: true }).pipe(
+        pluck("newValue"),
+        switchMap(game => useSoulsGame(game))
+      ),
+      this.onGameSuccess,
+      this.onGameError
+    );
+
+    this.$subscribeTo(
+      this.$watchAsObservable("$route.params.category", { immediate: true }).pipe(
+        pluck("newValue"),
+        switchMap(category => useSoulsCategory(this.$route.params.game, category))
+      ),
+      this.onCategorySuccess,
+      this.onCategoryError
+    );
+  },
 };
 </script>

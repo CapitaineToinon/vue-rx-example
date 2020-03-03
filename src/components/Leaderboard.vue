@@ -12,7 +12,7 @@
 
 <script>
 import { useLeaderboard } from "../api/speedsouls";
-import { startWith } from "rxjs/operators";
+import { startWith, pluck, switchMap, delay } from "rxjs/operators";
 
 export default {
   props: {
@@ -27,43 +27,39 @@ export default {
   },
   data: () => ({
     leaderboard: undefined,
-    leaderboardError: null,
-    leaderboardSource: null
+    leaderboardError: null
   }),
-  watch: {
-    game: {
-      immediate: true,
-      handler(val, oldVal) {
-        if (val === oldVal) return;
-        this.leaderboardSub(this.game, this.category);
-      }
-    },
-    category: {
-      immediate: true,
-      handler(val, oldVal) {
-        if (val === oldVal) return;
-        this.leaderboardSub(this.game, this.category);
-      }
-    }
-  },
   methods: {
-    leaderboardSub(game, category) {
-      this.leaderboardUnsub();
-      this.leaderboardSource = useLeaderboard(game, category)
-        .pipe(startWith(undefined))
-        .subscribe(this.onLeaderboardSuccess, this.onLeaderboardError);
-    },
-    leaderboardUnsub() {
-      if (this.leaderboardSource) this.leaderboardSource.unsubscribe();
-    },
     onLeaderboardSuccess(data) {
-      console.log(data);
       this.error = null;
       this.leaderboard = data;
     },
     onLeaderboardError(error) {
       this.leaderboardError = error;
     }
+  },
+  mounted() {
+    this.$subscribeTo(
+      this.$watchAsObservable("game", { immediate: true }).pipe(
+        pluck("newValue"),
+        switchMap(game =>
+          useLeaderboard(game, this.category).pipe(startWith(undefined))
+        )
+      ),
+      this.onLeaderboardSuccess,
+      this.onLeaderboardError
+    );
+
+    this.$subscribeTo(
+      this.$watchAsObservable("category", { immediate: true }).pipe(
+        pluck("newValue"),
+        switchMap(category =>
+          useLeaderboard(this.game, category).pipe(startWith(undefined))
+        )
+      ),
+      this.onLeaderboardSuccess,
+      this.onLeaderboardError
+    );
   }
 };
 </script>
